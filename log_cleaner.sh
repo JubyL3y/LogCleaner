@@ -1,77 +1,40 @@
 #!/bin/bash
 
-function log() {
-	if [[ "$LOG" == "1" ]]; then
-		if (($# > 0 )); then
-			echo -e "$@"
-		fi
-	fi
-}
-
-function echoerr() {
-	echo "$@" 1>&2; 
-}
+CONF_DIR="/etc/LogCleaner/"
+DIR_LIST="dirs.list"
 
 function remove_files_from_directory() {
 	if (($# < 1)); then
-		echo "Error, need directory"
 		return
 	fi
 	Files=`ls $1`
 	Dir=$1
 	for file in $Files; do
 		if [[ -d "$1/$file" ]]; then
-			log  "$1/$file is a directory, clearing it"
 			remove_files_from_directory "$1/$file"
 		elif [[ -h "$1/$file" ]]; then
-			log "$1/$file is symlink, don't touch this"
+			continue
 		else
-			log "$1/$file is file, remove it"
 			rm "$1/$file"
 		fi
 	done
 }
 
-if [[ -z "$CLEAR_DIR" ]]; then
-	CLEAR_DIR="/var/log"
+if [[ ! -d $CONF_DIR ]] ; then
+	mkdir $CONF_DIR
 fi
 
-if [[ -z "$DELAY_TIME" ]]; then
-	DELAY_TIME="0"
+if [[ ! -f $CONF_DIR$DIR_LIST ]] ; then
+	echo "/var/log" > $CONF_DIR$DIR_LIST
 fi
 
-log ""
+files_list=()
+while IFS= read -r line; do
+	files_list+=("$line")
+done < "$CONF_DIR$DIR_LIST"
 
-log '.%%..%%...%%%%....%%%%...%%..%%..%%%%%%..%%%%%...%%..%%..%%%%%%..%%......%%......%%%%%%.
-.%%..%%..%%..%%..%%..%%..%%.%%...%%......%%..%%..%%..%%....%%....%%......%%......%%.....
-.%%%%%%..%%%%%%..%%......%%%%....%%%%....%%%%%...%%..%%....%%....%%......%%......%%%%...
-.%%..%%..%%..%%..%%..%%..%%.%%...%%......%%..%%...%%%%.....%%....%%......%%......%%.....
-.%%..%%..%%..%%...%%%%...%%..%%..%%%%%%..%%..%%....%%....%%%%%%..%%%%%%..%%%%%%..%%%%%%.
-........................................................................................'
 
-log ""
-
-log "Set HOME directory to $HOME"
-log "Logging set to 1"
-log "CLEAR_DIR = $CLEAR_DIR"
-log "DELAY_TIME = $DELAY_TIME"
-
-log ""
-
-rm /root/.bash_history
-ln -s /dev/null /root/.bash_history
-log "Link bash history to /dev/null"
-
-service rsyslog stop
-log "Rsyslog was stopped"
-
-log "Delete log: "
-
-while true; do
-	remove_files_from_directory "$CLEAR_DIR"
-	if [[ "$DELAY_TIME" == "0" ]]; then
-		break
-	fi
-	log "Sleep for $DELAY_TIME"
-	sleep $DELAY_TIME
+for filename in "${files_list[@]}"; do
+	echo "$filename"
+	remove_files_from_directory $filename
 done
