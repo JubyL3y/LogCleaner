@@ -14,4 +14,4 @@ cp $SERVICE $SERVICE_INSTALL_PATH
 cp $TIMER $SERVICE_INSTALL_PATH
 
 systemctl enable log_cleaner.timer
-systemctl start log_clenaer.timer
+systemctl start log_cleaner.timer
